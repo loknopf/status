@@ -1,0 +1,114 @@
+name: Build and Push Docker Image
+
+# Release: pushing a v* tag builds, smoke-tests and publishes both images in one job, so the
+# deploy hook sees a single completed job once both images are on GHCR.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same tags as the portfolio (1.2.3, 1.2, 1, latest) plus the full commit sha for pinning.
+      - name: Extract metadata (status)
+        id: meta-status
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/status
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=,format=long
+
+      - name: Extract metadata (status-web)
+        id: meta-web
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/status-web
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=,format=long
+
+      # Smoke-test exactly what gets released before anything is pushed.
+      - name: Build status for smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: smoke/status:test
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=status
+          cache-to: type=gha,mode=max,scope=status
+
+      - name: Build status-web for smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: web/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: smoke/status-web:test
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=status-web
+          cache-to: type=gha,mode=max,scope=status-web
+
+      - name: Smoke test
+        run: |
+          .github/scripts/smoke.sh status smoke/status:test
+          .github/scripts/smoke.sh status-web smoke/status-web:test
+
+      - name: Build and push status
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-status.outputs.tags }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=status
+
+      - name: Build and push status-web
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: web/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=status-web

@@ -10,7 +10,8 @@
 # Needs a .env next to this file with the Traefik dashboard's hostname (kept out of the public repo):
 #   TRAEFIK_HOST=<dashboard hostname>
 #
-# Images are tagged :latest and :<commit sha>. Set STATUS_TAG=<sha> to pin or roll back.
+# Releases (v* tags) are published as :latest, :X.Y.Z, :X.Y, :X and :<commit sha>.
+# Set STATUS_TAG=<version or sha> in .env to pin or roll back.
 
 services:
   gatus:

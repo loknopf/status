@@ -76,17 +76,30 @@ The reverse proxy's hostname is not in this repo or the image. The config reads 
 
 ## CI and deploy
 
-[`.github/workflows/build.yml`](.github/workflows/build.yml) runs on every push to `main` (and on
-pull requests, without publishing). For each image it:
+Same pattern as the portfolio repo:
 
-1. builds the image for amd64;
-2. starts it read-only, without capabilities, as a non-root user;
-3. smoke-tests the API, CSP headers, build stamp, and that the hidden hostname doesn't leak;
-4. on `main` only, pushes `linux/amd64` + `linux/arm64` images tagged `:<commit sha>` and `:latest`.
+- **Build Docker Image** ([`docker_test_build.yml`](.github/workflows/docker_test_build.yml)) runs on
+  every push. It builds both images and smoke-tests them, and publishes nothing.
+- **Build and Push Docker Image** ([`docker_build.yml`](.github/workflows/docker_build.yml)) runs
+  when a `v*` tag is pushed. Its single `build-and-push` job builds and smoke-tests both images,
+  then publishes `linux/amd64` + `linux/arm64` images. The tags are `X.Y.Z`, `X.Y`, `X`, `latest`
+  and the full commit sha.
+
+The smoke test ([`.github/scripts/smoke.sh`](.github/scripts/smoke.sh)) starts each image the way
+the server runs it: read-only, without capabilities, as a non-root user. It then checks the API,
+the CSP header, the build stamp, and that the hidden hostname doesn't leak.
+
+To release, tag and push:
+
+```bash
+git tag v0.1.1 && git push origin v0.1.1
+```
 
 Dependabot keeps the pinned images and actions current, and stays on Gatus v5.
 
-The server deploys separately (GitHub webhook → n8n → SSH forced command → `manage.sh pull`) using
+The server deploys separately with the same n8n workflow as the portfolio: a GitHub `workflow_job`
+webhook → n8n → SSH forced command → `manage.sh pull`. A deploy happens once the release job has
+finished. The server uses
 [`deploy/docker-compose.status.yml`](deploy/docker-compose.status.yml). That file sets:
 
 - read-only root filesystems, `cap_drop: ALL`, `no-new-privileges`, non-root user;
