@@ -1,0 +1,19 @@
+# Weekly PRs for pinned base images and actions. CI builds and smoke-tests each PR; nothing is
+# published until it's merged to main.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directories: ["/", "/web"]
+    schedule: { interval: weekly }
+    ignore:
+      # stay on Gatus v5 until a major upgrade is done on purpose
+      - dependency-name: "*gatus*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker-compose
+    directory: "/dev"
+    schedule: { interval: weekly }
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }

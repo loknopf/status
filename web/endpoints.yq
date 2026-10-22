@@ -1,0 +1,9 @@
+# Public metadata per endpoint, written to /endpoints.json at build time (the Gatus API doesn't
+# expose URLs or intervals). Endpoints with ui.hide-url or ui.hide-hostname lose their URL here.
+explode(.) | [.endpoints[] | {
+  "name": .name,
+  "group": (.group // ""),
+  "method": (.method // "GET"),
+  "url": (if (.ui."hide-url" == true or .ui."hide-hostname" == true) then "" else .url end),
+  "interval": (.interval // "60s")
+}]

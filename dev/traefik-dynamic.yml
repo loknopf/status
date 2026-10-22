@@ -1,0 +1,20 @@
+# Same routing as the labels in deploy/docker-compose.status.yml, minus host and TLS.
+http:
+  routers:
+    status-api:
+      rule: "PathPrefix(`/api/`) && (Method(`GET`) || Method(`HEAD`))"
+      priority: 20
+      entryPoints: [web]
+      service: status-api
+    status-web:
+      rule: "PathPrefix(`/`)"
+      priority: 10
+      entryPoints: [web]
+      service: status-web
+  services:
+    status-api:
+      loadBalancer:
+        servers: [{ url: "http://gatus:8080" }]
+    status-web:
+      loadBalancer:
+        servers: [{ url: "http://web:8080" }]

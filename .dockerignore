@@ -1,0 +1,7 @@
+*
+!config/config.yaml
+!web/public/
+!web/endpoints.yq
+!web/sws.toml
+web/public/endpoints.json
+**/.DS_Store

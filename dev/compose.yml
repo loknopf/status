@@ -1,0 +1,39 @@
+# Local copy of the production setup with the real checks: http://localhost:8080
+#
+#   docker compose -f dev/compose.yml up --build
+#
+# Traefik routes /api/* to Gatus and everything else to the static site, as on the server.
+# To work on the page with 90 days of fake history instead, use dev/mock.py (see README).
+
+name: status-dev
+
+services:
+  gatus:
+    build: { context: .., dockerfile: Dockerfile }
+    environment:
+      # export TRAEFIK_HOST=<dashboard hostname> to check the real proxy; the default just fails
+      TRAEFIK_HOST: ${TRAEFIK_HOST:-proxy.invalid}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    volumes: ["gatus-data:/data"]
+
+  web:
+    build: { context: .., dockerfile: web/Dockerfile }
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  proxy:
+    image: traefik:v3.7.16@sha256:c8a121e4bb1347e8fd52657fab12f2cb70b68f8a018895e2068f92c9e519b9c2
+    command:
+      - --entrypoints.web.address=:8080
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --log.level=WARN
+    ports: ["127.0.0.1:8080:8080"]
+    volumes: ["./traefik-dynamic.yml:/etc/traefik/dynamic.yml:ro"]
+    depends_on: [gatus, web]
+
+volumes:
+  gatus-data:

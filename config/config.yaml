@@ -1,0 +1,168 @@
+# Gatus configuration for status.loknopf.dev (Gatus version pinned in ../Dockerfile).
+#
+# - API keys are "<group>_<name>", lower case, with spaces and dots turned into "-"
+#   (e.g. Services + n8n -> services_n8n).
+# - The static page (web/) reads name, group, method, url and interval from this file at build
+#   time, because the Gatus API doesn't expose URLs. Endpoints with ui.hide-url or ui.hide-hostname
+#   are published without their URL.
+# - Gatus runs os.ExpandEnv over this file: write a literal "$" as "$$". TRAEFIK_HOST must be set
+#   (deploy/docker-compose.status.yml reads it from .env next to it).
+#
+# Conditions marked "soft" below ([RESPONSE_TIME], [CERTIFICATE_EXPIRATION]) make the page show a
+# service as "degraded" instead of "down" when they're the only ones failing.
+
+storage:
+  type: sqlite
+  path: /data/data.db
+  caching: true
+  # The 90-day bars are rebuilt from up/down transitions ("events"); Gatus keeps the newest N.
+  maximum-number-of-events: 1000
+  maximum-number-of-results: 100
+
+# Shown as the incident banner at the top of the page. The first line of the message is the
+# headline, the rest is the body. Remove it (or set archived: true) when it's over.
+#
+# announcements:
+#   - timestamp: 2026-10-22T18:31:00Z
+#     type: outage # outage | warning | information | operational
+#     message: |-
+#       n8n is not responding
+#       Automations and deploy hooks are paused. Next update within 30 minutes.
+
+endpoints:
+  # --- Public ---------------------------------------------------------------------------------
+  - name: Portfolio
+    group: Public
+    url: https://loknopf.dev
+    interval: 60s
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
+    ui:
+      resolve-successful-conditions: true
+
+  - name: Excalidraw
+    group: Public
+    url: https://excalidraw.loknopf.dev
+    interval: 60s
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
+    ui:
+      resolve-successful-conditions: true
+
+  # --- Services -------------------------------------------------------------------------------
+  - name: n8n
+    group: Services
+    url: https://n8n.loknopf.dev/healthz
+    interval: 60s
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == ok"
+      - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
+    ui:
+      resolve-successful-conditions: true
+
+  - name: Nextcloud
+    group: Services
+    url: https://cloud.loknopf.dev/status.php
+    interval: 60s
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].installed == true"
+      - "[BODY].maintenance == false"
+      - "[BODY].needsDbUpgrade == false"
+      - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
+    ui:
+      resolve-successful-conditions: true
+
+  - name: Grafana
+    group: Services
+    url: https://grafana.loknopf.dev/api/health
+    interval: 60s
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].database == ok"
+      - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
+    ui:
+      resolve-successful-conditions: true
+
+  # --- Infrastructure -------------------------------------------------------------------------
+  # The Traefik dashboard sits behind basic auth, so 401 means "up". Its hostname isn't in this
+  # repo: TRAEFIK_HOST comes from the server's .env, and hide-* keeps it out of the API and page.
+  - name: Reverse proxy
+    group: Infrastructure
+    url: https://${TRAEFIK_HOST}
+    interval: 60s
+    conditions:
+      - "[STATUS] == 401"
+      - "[RESPONSE_TIME] < 1500"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
+    ui:
+      hide-hostname: true
+      hide-url: true
+      resolve-successful-conditions: true
+
+  # --- Certificates ---------------------------------------------------------------------------
+  # One TLS check per domain. The page folds this group into a single "TLS certificates" row
+  # under Infrastructure; it has its own up/down history, so a certificate that's about to expire
+  # doesn't show up as downtime of the service behind it.
+  - name: loknopf.dev
+    group: Certificates
+    url: tls://loknopf.dev:443
+    interval: 5m
+    conditions: &tls
+      - "[CONNECTED] == true"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
+    ui: &tls-ui
+      resolve-successful-conditions: true
+
+  - name: status.loknopf.dev
+    group: Certificates
+    url: tls://status.loknopf.dev:443
+    interval: 5m
+    conditions: *tls
+    ui: *tls-ui
+
+  - name: excalidraw.loknopf.dev
+    group: Certificates
+    url: tls://excalidraw.loknopf.dev:443
+    interval: 5m
+    conditions: *tls
+    ui: *tls-ui
+
+  - name: n8n.loknopf.dev
+    group: Certificates
+    url: tls://n8n.loknopf.dev:443
+    interval: 5m
+    conditions: *tls
+    ui: *tls-ui
+
+  - name: cloud.loknopf.dev
+    group: Certificates
+    url: tls://cloud.loknopf.dev:443
+    interval: 5m
+    conditions: *tls
+    ui: *tls-ui
+
+  - name: grafana.loknopf.dev
+    group: Certificates
+    url: tls://grafana.loknopf.dev:443
+    interval: 5m
+    conditions: *tls
+    ui: *tls-ui
+
+  - name: Reverse proxy
+    group: Certificates
+    url: tls://${TRAEFIK_HOST}:443
+    interval: 5m
+    conditions: *tls
+    ui:
+      hide-hostname: true
+      hide-url: true
+      resolve-successful-conditions: true

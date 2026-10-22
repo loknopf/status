@@ -1,0 +1,88 @@
+# status.loknopf.dev: Gatus (only /api/* public) + the static status page, behind Traefik.
+#
+# Copy this file to the server; `manage.sh pull` (docker compose pull && up -d) deploys new images.
+# Assumptions about the server's Traefik, adjust if yours differ:
+#   - entrypoint "websecure" (TLS) and certresolver "letsencrypt"
+#   - Traefik is attached to the network "proxy-status" (created by this file):
+#       docker network connect proxy-status traefik
+#     or list it as an external network in Traefik's own compose file.
+#
+# Needs a .env next to this file with the Traefik dashboard's hostname (kept out of the public repo):
+#   TRAEFIK_HOST=<dashboard hostname>
+#
+# Images are tagged :latest and :<commit sha>. Set STATUS_TAG=<sha> to pin or roll back.
+
+services:
+  gatus:
+    image: ghcr.io/loknopf/status:${STATUS_TAG:-latest}
+    container_name: status-gatus
+    restart: unless-stopped
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 128
+    cpus: 0.5
+    environment:
+      TRAEFIK_HOST: ${TRAEFIK_HOST:?set TRAEFIK_HOST in .env next to this file}
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    volumes:
+      - status-data:/data # sqlite at /data/data.db
+    networks: [proxy-status]
+    logging: &logging
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy-status
+      # Only the read-only API is public; Gatus' own UI (/, /endpoints/...) is never routed.
+      - traefik.http.routers.status-api.rule=Host(`status.loknopf.dev`) && PathPrefix(`/api/`) && (Method(`GET`) || Method(`HEAD`))
+      - traefik.http.routers.status-api.priority=20
+      - traefik.http.routers.status-api.entrypoints=websecure
+      - traefik.http.routers.status-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.status-api.service=status-api
+      - traefik.http.routers.status-api.middlewares=status-api-ratelimit,status-api-headers
+      - traefik.http.services.status-api.loadbalancer.server.port=8080
+      # A page load makes ~15 API requests at once (one per endpoint for the 90-day history).
+      - traefik.http.middlewares.status-api-ratelimit.ratelimit.average=10
+      - traefik.http.middlewares.status-api-ratelimit.ratelimit.burst=60
+      - traefik.http.middlewares.status-api-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.status-api-headers.headers.frameDeny=true
+      - traefik.http.middlewares.status-api-headers.headers.referrerPolicy=no-referrer
+      - traefik.http.middlewares.status-api-headers.headers.stsSeconds=31536000
+
+  web:
+    image: ghcr.io/loknopf/status-web:${STATUS_TAG:-latest}
+    container_name: status-web
+    restart: unless-stopped
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 32m
+    memswap_limit: 32m
+    pids_limit: 64
+    cpus: 0.25
+    networks: [proxy-status]
+    logging: *logging
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy-status
+      # Everything that isn't the API: static files with their own CSP and security headers.
+      - traefik.http.routers.status-web.rule=Host(`status.loknopf.dev`)
+      - traefik.http.routers.status-web.priority=10
+      - traefik.http.routers.status-web.entrypoints=websecure
+      - traefik.http.routers.status-web.tls.certresolver=letsencrypt
+      - traefik.http.routers.status-web.service=status-web
+      - traefik.http.services.status-web.loadbalancer.server.port=8080
+
+volumes:
+  status-data:
+    name: status-data
+
+networks:
+  proxy-status:
+    name: proxy-status

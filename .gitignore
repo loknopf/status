@@ -1,0 +1,4 @@
+.DS_Store
+# generated at build time from config/config.yaml (or locally for dev/mock.py)
+web/public/endpoints.json
+__pycache__/

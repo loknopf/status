@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service · loknopf.dev status</title>
+<meta name="description" content="Check history, conditions and response times for one service on loknopf.dev.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#1A1A1A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/style.css">
+<script type="module" src="/assets/service.js"></script>
+</head>
+<body>
+<div class="page">
+
+<header class="wrap site-header">
+  <a class="brand" href="/"><span class="brand-tilde">~/</span><span>loknopf.dev</span><span class="brand-path">/status</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="https://loknopf.dev">portfolio</a>
+    <a href="/#api">api</a>
+    <a href="https://github.com/loknopf/status">source</a>
+  </nav>
+</header>
+
+<section class="hero detail">
+  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <a class="cd-up" href="/">cd ..</a>
+    <div class="terminal">
+      <div class="dots" aria-hidden="true"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+      <div class="term-body">
+        <p class="prompt" id="prompt">$ status services/</p>
+        <div class="title-row" aria-live="polite">
+          <h1 class="hero-title" id="name">Loading…</h1>
+          <span class="chip none" id="pill" hidden></span>
+        </div>
+        <p class="muted" id="target">Waiting for the status API</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="wrap detail-main" id="detail" hidden>
+
+  <section class="stats" aria-label="Summary" id="stats"></section>
+
+  <section class="panel" aria-labelledby="rt-title">
+    <div class="panel-head">
+      <h2 class="c-blue" id="rt-title">Response time</h2>
+      <span class="panel-meta" id="rt-meta">last 24 h</span>
+    </div>
+    <div class="chart">
+      <div class="chart-y" id="rt-y" aria-hidden="true"></div>
+      <div class="chart-plot">
+        <svg class="chart-svg" id="rt-svg" viewBox="0 0 960 200" preserveAspectRatio="none" role="img" aria-label="Response time over the last 24 hours">
+          <line class="grid-line" x1="0" x2="960" y1="1" y2="1" vector-effect="non-scaling-stroke"></line>
+          <line class="grid-line" x1="0" x2="960" y1="50" y2="50" vector-effect="non-scaling-stroke"></line>
+          <line class="grid-line" x1="0" x2="960" y1="100" y2="100" vector-effect="non-scaling-stroke"></line>
+          <line class="grid-line" x1="0" x2="960" y1="150" y2="150" vector-effect="non-scaling-stroke"></line>
+          <line class="grid-base" x1="0" x2="960" y1="199" y2="199" vector-effect="non-scaling-stroke"></line>
+          <g id="rt-series"></g>
+        </svg>
+        <div class="chart-x" id="rt-x" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="split">
+    <section class="panel" aria-labelledby="cond-title">
+      <h2 class="c-green" id="cond-title">Conditions</h2>
+      <p class="panel-note">A check passes only when all of these hold.</p>
+      <div id="conditions"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="api-title">
+      <h2 class="c-blue" id="api-title">API</h2>
+      <p class="panel-note">Endpoint key <code id="api-key"></code></p>
+      <div class="api-item">
+        <span class="api-path json" id="api-statuses"></span>
+        <span class="api-desc">Check history as JSON</span>
+      </div>
+      <div class="api-item">
+        <span class="api-path svg" id="api-badge"></span>
+        <span class="api-desc">Uptime badge</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="checks" aria-labelledby="checks-title">
+    <h2 class="section-h2 c-amber" id="checks-title">Recent checks</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">time</th><th scope="col">http</th><th scope="col">response</th><th scope="col">result</th></tr>
+        </thead>
+        <tbody id="checks"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap site-footer tight">
+  <span>powered by <a href="https://github.com/TwiN/gatus">gatus</a> · deployed from <a href="https://github.com/loknopf/status">loknopf/status</a> @ <a href="https://github.com/loknopf/status/commit/__GIT_SHA__">__GIT_SHA_SHORT__</a></span>
+</footer>
+
+</div>
+</body>
+</html>

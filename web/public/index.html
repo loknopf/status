@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>loknopf.dev status</title>
+<meta name="description" content="Live status of the services running on loknopf.dev, checked every minute.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#1A1A1A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/style.css">
+<script type="module" src="/assets/main.js"></script>
+</head>
+<body>
+<div class="page">
+
+<header class="wrap site-header">
+  <a class="brand" href="#top"><span class="brand-tilde">~/</span><span>loknopf.dev</span><span class="brand-path">/status</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="https://loknopf.dev">portfolio</a>
+    <a href="#api">api</a>
+    <a href="https://github.com/loknopf/status">source</a>
+  </nav>
+</header>
+
+<main>
+  <section id="top" class="hero">
+    <div class="grid-bg" aria-hidden="true"></div>
+    <div class="terminal">
+      <div class="dots" aria-hidden="true"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+      <div class="term-body">
+        <p class="prompt">$ status --summary</p>
+        <div aria-live="polite">
+          <h1 class="hero-title" id="hero-title">Checking…</h1>
+          <p class="hero-tag fg-none" id="hero-tag">[ .... ] loading the latest checks</p>
+        </div>
+        <p class="hero-sub muted"><span id="hero-sub">Waiting for the status API</span><span id="hero-age"></span></p>
+        <p class="prompt">$ ls services/</p>
+        <ul class="chips" id="chips" aria-label="Services"></ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap incidents" id="incidents"></div>
+
+  <section class="wrap services" aria-labelledby="running-title">
+    <h2 class="section-title" id="running-title">What's running</h2>
+    <div class="groups" id="groups">
+      <noscript><p class="placeholder">This page needs JavaScript to load the checks. The raw data is at <a href="/api/v1/endpoints/statuses">/api/v1/endpoints/statuses</a>.</p></noscript>
+    </div>
+    <ul class="legend" id="legend">
+      <li><span class="swatch up"></span>no incidents</li>
+      <li><span class="swatch deg"></span>degraded</li>
+      <li><span class="swatch down"></span>downtime</li>
+      <li id="legend-none" hidden><span class="swatch none"></span>no data</li>
+    </ul>
+  </section>
+
+  <section id="api" class="api" aria-labelledby="api-title">
+    <div class="wrap api-inner">
+      <div class="api-head">
+        <h2 id="api-title">Query it</h2>
+        <p>Everything on this page comes from a public, read-only JSON API. No key needed. Endpoint keys are <code>group_name</code>, for example <code>services_n8n</code>.</p>
+      </div>
+      <div class="api-grid">
+        <div class="api-card">
+          <span class="api-path json">GET /api/v1/endpoints/statuses</span>
+          <span class="api-desc">All services with their recent results</span>
+        </div>
+        <div class="api-card">
+          <span class="api-path json">GET /api/v1/endpoints/{key}/statuses</span>
+          <span class="api-desc">One service with its check history</span>
+        </div>
+        <div class="api-card">
+          <span class="api-path svg">GET /api/v1/endpoints/{key}/health/badge.svg</span>
+          <span class="api-desc">Up/down badge</span>
+        </div>
+        <div class="api-card">
+          <span class="api-path svg">GET /api/v1/endpoints/{key}/uptimes/7d/badge.svg</span>
+          <span class="api-desc">Uptime badge (1h, 24h, 7d, 30d)</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap site-footer">
+  <span>Checks run from the same host. If this page is down, so is everything else.</span>
+  <span>powered by <a href="https://github.com/TwiN/gatus">gatus</a> · deployed from <a href="https://github.com/loknopf/status">loknopf/status</a> @ <a href="https://github.com/loknopf/status/commit/__GIT_SHA__">__GIT_SHA_SHORT__</a></span>
+</footer>
+
+</div>
+</body>
+</html>
