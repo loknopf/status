@@ -4,7 +4,7 @@
 
 # --- build: stamp the commit and publish endpoint metadata from the Gatus config -------------
 # Runs on the build machine's platform; its output is plain files, so no emulation is needed.
-FROM --platform=$BUILDPLATFORM mikefarah/yq:4.54.1@sha256:4b3d9475d65571d28cbb19544d3820ec2945e4c8b2f18279394282b8dc3a592e AS build
+FROM --platform=$BUILDPLATFORM mikefarah/yq:4.54.3@sha256:7834187596ad56fd5a81436114e0b0b9dd54c91bb43946d1f7145b2be5f9c3d2 AS build
 ARG GIT_SHA=dev
 USER root
 WORKDIR /build
