@@ -1,7 +1,7 @@
 import {
   $, h, svg, chip, getJSON, getText, endpointPath, loadMeta, latestResult, resultState, parseCondition,
   formatConditionValue, certRemainingMs, formatPercent, formatRemaining, formatDuration, formatInterval,
-  formatClock, parseGoDuration, slug, HttpError, STATE_LABEL, REFRESH_MS, HOUR,
+  formatClock, parseGoDuration, hostOf, slug, HttpError, STATE_LABEL, REFRESH_MS, HOUR,
 } from './common.js';
 
 const key = new URLSearchParams(location.search).get('key') || '';
@@ -28,8 +28,9 @@ async function refresh() {
   const st = status.value;
   const latest = latestResult(st);
   const value = (r) => (r.status === 'fulfilled' ? r.value : null);
-  renderHero(st, latest, value(meta)?.get(st.key));
-  renderStats(latest, value(u24), value(u7), value(u30), value(rt7));
+  const metas = value(meta) || new Map();
+  renderHero(st, latest, metas.get(st.key));
+  renderStats(latest, await certRemaining(st, latest, metas), value(u24), value(u7), value(u30), value(rt7));
   renderChart(value(history));
   renderConditions(latest);
   renderApi(st.key);
@@ -70,10 +71,26 @@ function failingSince(st, latest) {
   return latest ? Date.parse(latest.timestamp) : Date.now();
 }
 
-function renderStats(latest, u24, u7, u30, rt7) {
+// HTTP checks don't carry [CERTIFICATE_EXPIRATION] (reused connections report a stale certificate,
+// see the Certificates group in config/config.yaml), so their expiry comes from the tls:// check
+// for the same host. Hidden endpoints have no URL here and are matched by name instead.
+async function certRemaining(st, latest, metas) {
+  const own = metas.get(st.key);
+  if (st.group === 'Certificates' || !own) return certRemainingMs(latest);
+  const host = hostOf(own.url);
+  const tls = [...metas].find(([, m]) => m.group === 'Certificates'
+    && (host ? hostOf(m.url) === host : !m.url && m.name === st.name));
+  if (!tls) return certRemainingMs(latest);
+  try {
+    return certRemainingMs(latestResult(await getJSON(`${endpointPath(tls[0])}/statuses?pageSize=1`)));
+  } catch {
+    return null;
+  }
+}
+
+function renderStats(latest, cert, u24, u7, u30, rt7) {
   const uptime = (text) => (latest && text != null ? formatPercent(Number.parseFloat(text)) : '—');
   const avg = Number.parseInt(rt7, 10);
-  const cert = certRemainingMs(latest);
   const stats = [
     ['Uptime 24 h', uptime(u24)],
     ['Uptime 7 d', uptime(u7)],

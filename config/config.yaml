@@ -10,6 +10,9 @@
 #
 # Conditions marked "soft" below ([RESPONSE_TIME], [CERTIFICATE_EXPIRATION]) make the page show a
 # service as "degraded" instead of "down" when they're the only ones failing.
+#
+# [CERTIFICATE_EXPIRATION] is checked only by the tls:// endpoints in the Certificates group, never
+# on the HTTP checks (reason at the top of that group).
 
 storage:
   type: sqlite
@@ -38,7 +41,6 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1500"
-      - "[CERTIFICATE_EXPIRATION] > 168h"
     ui:
       resolve-successful-conditions: true
 
@@ -49,7 +51,6 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
       - "[RESPONSE_TIME] < 1500"
-      - "[CERTIFICATE_EXPIRATION] > 168h"
     ui:
       resolve-successful-conditions: true
 
@@ -62,7 +63,6 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].status == ok"
       - "[RESPONSE_TIME] < 1500"
-      - "[CERTIFICATE_EXPIRATION] > 168h"
     ui:
       resolve-successful-conditions: true
 
@@ -76,7 +76,6 @@ endpoints:
       - "[BODY].maintenance == false"
       - "[BODY].needsDbUpgrade == false"
       - "[RESPONSE_TIME] < 1500"
-      - "[CERTIFICATE_EXPIRATION] > 168h"
     ui:
       resolve-successful-conditions: true
 
@@ -88,7 +87,6 @@ endpoints:
       - "[STATUS] == 200"
       - "[BODY].database == ok"
       - "[RESPONSE_TIME] < 1500"
-      - "[CERTIFICATE_EXPIRATION] > 168h"
     ui:
       resolve-successful-conditions: true
 
@@ -102,7 +100,6 @@ endpoints:
     conditions:
       - "[STATUS] == 401"
       - "[RESPONSE_TIME] < 1500"
-      - "[CERTIFICATE_EXPIRATION] > 168h"
     ui:
       hide-hostname: true
       hide-url: true
@@ -112,6 +109,12 @@ endpoints:
   # One TLS check per domain. The page folds this group into a single "TLS certificates" row
   # under Infrastructure; it has its own up/down history, so a certificate that's about to expire
   # doesn't show up as downtime of the service behind it.
+  #
+  # Certificate expiry is checked here only, not on the HTTP checks above. Gatus reuses its HTTPS
+  # connections (60s checks keep them open longer than Traefik's idle timeout), so an HTTP check
+  # keeps reporting the certificate from the first handshake, even after Traefik has renewed it.
+  # That raised a false "expiring" warning for cloud.loknopf.dev on 2026-11-27. A tls:// check
+  # opens a fresh connection every time, so it sees the certificate actually being served.
   - name: loknopf.dev
     group: Certificates
     url: tls://loknopf.dev:443
