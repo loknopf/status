@@ -32,8 +32,12 @@ All checks go through the public URLs, the same way a visitor would.
 | Infrastructure | Reverse proxy | `GET` Traefik dashboard (hostname hidden)     | `401` (basic auth in front)                                            |
 | Certificates   | 7 domains     | `tls://<domain>:443` every 5 min              | handshake OK, certificate valid > 7 days                               |
 
-Every HTTP check also requires `[RESPONSE_TIME] < 1500` and `[CERTIFICATE_EXPIRATION] > 168h`.
-HTTP checks run every 60 s.
+Every HTTP check also requires `[RESPONSE_TIME] < 1500`. HTTP checks run every 60 s.
+
+Certificate expiry is checked only by the `tls://` checks, not by the HTTP ones. Gatus keeps its
+HTTPS connections open between checks, so an HTTP check keeps seeing the certificate from its
+first handshake and reports a stale expiry after Traefik renews it. A `tls://` check opens a new
+connection each time. A service's page shows the expiry from the `tls://` check for its host.
 
 The certificate group covers `loknopf.dev`, `status.`, `excalidraw.`, `n8n.`, `cloud.`, `grafana.`,
 and the proxy. The page folds it into a single **TLS certificates** row under Infrastructure.

@@ -48,7 +48,7 @@ class Fake:
         self.meta = meta
         self.name, self.group = meta["name"], meta["group"]
         self.key = key_of(self.group, self.name)
-        self.tls = meta["url"].startswith("tls://")
+        self.tls = self.group == "Certificates"  # by group: hidden endpoints have no URL here
         self.proxy = self.group == "Infrastructure"
         self.current = current  # up | slow | down
         rnd = random.Random(self.key)
@@ -90,16 +90,15 @@ class Fake:
         down = self.current == "down" and age < 12
         slow = self.current == "slow" and age < 25
         ms = self.base_ms + self.rnd.randint(-15, 25) + (1800 if slow else 0)
-        cert = go_duration(self.cert)
+        # Like config/config.yaml: only the tls:// checks carry [CERTIFICATE_EXPIRATION].
         if self.tls:
+            cert = go_duration(self.cert)
             conds = [("[CONNECTED] (true) == true", True), (f"[CERTIFICATE_EXPIRATION] ({cert}) > 168h", True)]
         elif down:
-            conds = [("[STATUS] (0) == 200", False), ("[RESPONSE_TIME] (10000) < 1500", False),
-                     ("[CERTIFICATE_EXPIRATION] (0s) > 168h", False)]
+            conds = [("[STATUS] (0) == 200", False), ("[RESPONSE_TIME] (10000) < 1500", False)]
         else:
             code = 401 if self.proxy else 200
-            conds = [(f"[STATUS] ({code}) == {code}", True), (f"[RESPONSE_TIME] ({ms}) < 1500", ms < 1500),
-                     (f"[CERTIFICATE_EXPIRATION] ({cert}) > 168h", True)]
+            conds = [(f"[STATUS] ({code}) == {code}", True), (f"[RESPONSE_TIME] ({ms}) < 1500", ms < 1500)]
         r = {
             "duration": (10_000 if down else ms) * 1_000_000,
             "conditionResults": [{"condition": c, "success": ok} for c, ok in conds],
